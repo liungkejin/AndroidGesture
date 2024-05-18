@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.kejin.view.gesture.GestureImageView
+        android:id="@+id/gesture_image_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/ic_launcher_foreground"
+        android:background="@color/black"
+        android:layout_weight="1"/>
+
+    <com.kejin.view.gesture.GestureFrameLayout
+        android:id="@+id/gesture_frame_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="bottom"
+        android:background="@color/teal_700"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/gesture_control_view"
+            style="@style/TextAppearance.Material3.BodyLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Gesture Frame Layout"
+            android:gravity="center"
+            android:background="@color/white" />
+
+    </com.kejin.view.gesture.GestureFrameLayout>
+</LinearLayout>
