@@ -8,8 +8,7 @@
         android:id="@+id/gesture_image_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:src="@drawable/ic_launcher_foreground"
-        android:background="@color/black"
+        android:src="@drawable/test"
         android:layout_weight="1"/>
 
     <com.kejin.view.gesture.GestureFrameLayout
@@ -22,10 +21,10 @@
 
         <TextView
             android:id="@+id/gesture_control_view"
-            style="@style/TextAppearance.Material3.BodyLarge"
+            style="@style/TextAppearance.Material3.TitleLarge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Gesture Frame Layout"
+            android:text="TextView\nThis is TextView"
             android:gravity="center"
             android:background="@color/white" />
 
