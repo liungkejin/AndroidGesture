@@ -19,7 +19,6 @@ public interface GestureListener {
 
     /**
      * 每个触摸事件处理结束之后的回调
-     * 这个回调在 onTouchEnd() 之前
      */
     @CallSuper
     default void onTouchEventAfter(@NonNull MotionEvent e) {
