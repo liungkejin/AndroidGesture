@@ -115,10 +115,12 @@ public class ViewGestureAttacher implements
         }
     }
 
+    private boolean needNotifyMatrixChange = false;
     @Override
     public boolean onTouch(@NonNull View v, @NonNull MotionEvent ev) {
         mCurPointerCount = ev.getPointerCount();
         mGestureDetector.onTouchEvent(v, ev);
+        needNotifyMatrixChange = false;
         return true;
     }
 
@@ -192,9 +194,8 @@ public class ViewGestureAttacher implements
 
         mSuppMatrix.postTranslate(dx, dy);
 
-        if (!fixBoundary()) {
-            notifyMatrixChanged();
-        }
+        fixBoundary(false);
+        needNotifyMatrixChange = true;
     }
 
     @Override
@@ -214,9 +215,7 @@ public class ViewGestureAttacher implements
     public boolean onFling(float dx, float dy, boolean singlePointer) {
         mSuppMatrix.postTranslate(dx, dy);
 
-        if (!fixBoundary()) {
-            notifyMatrixChanged();
-        }
+        fixBoundary(true);
         return false;
     }
 
@@ -248,9 +247,8 @@ public class ViewGestureAttacher implements
         }
 
         mSuppMatrix.postScale(scaleFactor, scaleFactor, focusX, focusY);
-        if (!fixBoundary()) {
-            notifyMatrixChanged();
-        }
+        fixBoundary(false);
+        needNotifyMatrixChange = true;
     }
 
     @Override
@@ -259,6 +257,15 @@ public class ViewGestureAttacher implements
             return;
         }
         fixScaleAnimated(cx, cy, true);
+    }
+
+    @Override
+    public void onTouchEventAfter(@NonNull MotionEvent e) {
+        if (needNotifyMatrixChange) {
+            needNotifyMatrixChange = false;
+            notifyMatrixChanged();
+        }
+        GestureListener.super.onTouchEventAfter(e);
     }
 
     @Override
@@ -398,12 +405,9 @@ public class ViewGestureAttacher implements
     void postTranslate(float dx, float dy, boolean fixBound) {
         mSuppMatrix.postTranslate(dx, dy);
         if (fixBound) {
-            if (!fixBoundary()) {
-                notifyMatrixChanged();
-            }
-        } else {
-            notifyMatrixChanged();
+            fixBoundary(false);
         }
+        notifyMatrixChanged();
     }
 
     void postTranslateScale(float dx, float dy, float scaleFactor, boolean fixBound) {
@@ -469,28 +473,28 @@ public class ViewGestureAttacher implements
         } else {
             mSuppMatrix.postScale(scaleFactor, scaleFactor, focalX, focalY);
         }
-        if (!fixBound || !fixBoundary()) {
-            notifyMatrixChanged();
+        if (fixBound) {
+            fixBoundary(false);
         }
+        notifyMatrixChanged();
     }
 
-    public boolean fixBoundaryAnimated() {
+    public void fixBoundaryAnimated() {
         PointF deltaXY = getBoundaryDeltaXY();
         if (deltaXY.x == 0 && deltaXY.y == 0) {
-            return false;
+            return;
         }
         postTranslate(deltaXY.x, deltaXY.y, false, true);
-        return true;
     }
 
-    public boolean fixBoundary() {
+    public void fixBoundary(boolean forceNotify) {
         PointF deltaXY = getBoundaryDeltaXY();
-        if (deltaXY.x == 0 && deltaXY.y == 0) {
-            return false;
+        if (deltaXY.x != 0 || deltaXY.y != 0) {
+            mSuppMatrix.postTranslate(deltaXY.x, deltaXY.y);
         }
-        mSuppMatrix.postTranslate(deltaXY.x, deltaXY.y);
-        notifyMatrixChanged();
-        return true;
+        if (forceNotify) {
+            notifyMatrixChanged();
+        }
     }
 
     public boolean fixScaleAnimated(boolean fixBound) {
