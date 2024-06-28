@@ -1,4 +1,4 @@
-package com.kejin.view.gesture;
+package com.kejin.android.gesture.view;
 
 import android.content.Context;
 import android.graphics.RectF;
@@ -61,8 +61,7 @@ public class GestureFrameLayout extends FrameLayout {
         controlViews.remove(view);
     }
 
-    @Nullable
-    public ViewGestureAttacher startControl(int width, int height) {
+    public void startControl(int width, int height) {
         for (View view : controlViews) {
             LayoutParams params =
                     new LayoutParams(width, height, Gravity.LEFT|Gravity.TOP);
@@ -75,7 +74,7 @@ public class GestureFrameLayout extends FrameLayout {
 
         if (gestureAttacher != null &&
                 gestureAttacher.isSameImageSize(width, height)) {
-            return gestureAttacher;
+            return;
         }
 
         if (gestureAttacher != null) {
@@ -83,7 +82,7 @@ public class GestureFrameLayout extends FrameLayout {
             gestureAttacher = null;
         }
         if (width < 1 || height < 1) {
-            return null;
+            return;
         }
         ViewGestureAttacher attacher = new ViewGestureAttacher(this, width, height);
         attacher.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -94,7 +93,6 @@ public class GestureFrameLayout extends FrameLayout {
         attacher.setGestureListener(gestureListener);
         attacher.update();
         gestureAttacher = attacher;
-        return gestureAttacher;
     }
 
     private void updateControlViewRect(float vw, float vh, @NonNull RectF rect) {

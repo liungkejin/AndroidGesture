@@ -1,4 +1,4 @@
-package com.kejin.view.gesture;
+package com.kejin.android.gesture.view;
 
 import android.view.ViewParent;
 
@@ -6,6 +6,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 public interface IGestureListener {
+    default void onTouchStart(@NonNull ViewGestureAttacher attacher) {}
+
     /**
      * @param dx delta x
      * @param dy delta y
@@ -20,29 +22,26 @@ public interface IGestureListener {
     }
 
     /**
-     * 向下拖拽超出边界
-     * @param dy 垂直距离
-     * @param percent 和整个view的比值 0 - 1
-     * @param isDragEnd 是否结束
-     */
-    default void onOverDragDown(@NonNull ViewGestureAttacher attacher,
-                                float dy, float percent, boolean isDragEnd) {}
-
-    /**
      * 拖动结束的回调
      * @param sumDx 从touch down 开始总的距离
      * @param sumDy 从touch down 开始总的距离, 即所有 dy 的总和
      */
-    default void onDragEnd(@NonNull ViewGestureAttacher attacher, float sumDx, float sumDy) {}
+    default boolean onDragEnd(@NonNull ViewGestureAttacher attacher, float sumDx, float sumDy) {
+        return false;
+    }
 
     /**
-     * 在拖动结束后，调用此方法
-     * @param velocityX x方向速度
-     * @param velocityY y方向速度
-     * @return 返回true表示不执行内部的 fling, 自己控制 fling
+     * 向下拖拽超出边界
+     * @param dy 垂直距离
+     * @param percent 和整个view的比值 0 - 1
      */
-    default boolean onFling(@NonNull ViewGestureAttacher attacher,
-                            float startX, float startY, float velocityX, float velocityY) {
+    default void onDragOverDown(@NonNull ViewGestureAttacher attacher, float dy, float percent) {}
+
+    /**
+     * 向下拖拽超出边界结束
+     * @return 是否做处理，如果true表示已做了处理，不会去修正边界
+     */
+    default boolean onDragOverDownEnd(@NonNull ViewGestureAttacher attacher, float dy, float percent) {
         return false;
     }
 
@@ -56,12 +55,6 @@ public interface IGestureListener {
                             float factor, float fx, float fy) {
         return false;
     }
-
-    /**
-     * 结束缩放
-     */
-    default void onScaleEnd(@NonNull ViewGestureAttacher attacher,
-                            float fx, float fy) {}
 
     /**
      * 点击事件回调
@@ -81,11 +74,6 @@ public interface IGestureListener {
     default boolean onDoubleClick(@NonNull ViewGestureAttacher attacher, float x, float y) {
         return false;
     }
-
-    /**
-     * 长按事件回调
-     */
-    default void onLongClick(@NonNull ViewGestureAttacher attacher) {}
 
     /**
      * 在每次 TOUCH_UP / TOUCH_CANCEL 时回调

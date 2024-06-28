@@ -1,4 +1,4 @@
-package com.kejin.viewgestureattacher;
+package com.kejin.android.gesturetest;
 
 import android.os.Bundle;
 import android.widget.TextView;
@@ -6,8 +6,9 @@ import android.widget.TextView;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.kejin.view.gesture.GestureFrameLayout;
-import com.kejin.view.gesture.GestureImageView;
+import com.kejin.android.gesture.view.GestureFrameLayout;
+import com.kejin.android.gesture.view.GestureImageView;
+
 
 public class TestActivity extends AppCompatActivity {
 

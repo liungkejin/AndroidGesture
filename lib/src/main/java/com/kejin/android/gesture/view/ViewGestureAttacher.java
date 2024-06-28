@@ -1,4 +1,4 @@
-package com.kejin.view.gesture;
+package com.kejin.android.gesture.view;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -6,19 +6,19 @@ import android.graphics.Matrix;
 import android.graphics.Matrix.ScaleToFit;
 import android.graphics.PointF;
 import android.graphics.RectF;
-import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
 import android.widget.ImageView.ScaleType;
-import android.widget.Scroller;
 
 import androidx.annotation.NonNull;
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
+import com.kejin.android.gesture.GestureDetector;
+import com.kejin.android.gesture.GestureListener;
 
-public class ViewGestureAttacher implements View.OnTouchListener,
-        View.OnLayoutChangeListener, DragScaleDetector.Listener {
+public class ViewGestureAttacher implements
+        View.OnTouchListener, View.OnLayoutChangeListener, GestureListener {
 
     private final static float DEFAULT_MIN_SCALE = 1.0f;
     private final static int DEFAULT_ANIM_DURATION = 200;
@@ -28,7 +28,6 @@ public class ViewGestureAttacher implements View.OnTouchListener,
 
     // Gesture Detectors
     private final GestureDetector mGestureDetector;
-    private final DragScaleDetector mDragScaleDetector;
 
     // These are set so we don't keep allocating them on the heap
     private final Matrix mBaseMatrix = new Matrix();
@@ -49,8 +48,6 @@ public class ViewGestureAttacher implements View.OnTouchListener,
     private IMatrixListener mMatrixListener = null;
     private IParentInterceptHandler mInterceptHandler;
     private OverDragDownHandler mOverDragHandler;
-
-    private FlingRunnable mCurrentFlingRunnable;
 
     private ValueAnimator mTransAnimator = null;
     private ValueAnimator mScaleAnimator = null;
@@ -75,34 +72,17 @@ public class ViewGestureAttacher implements View.OnTouchListener,
         this.mMaxScale = Math.max(Math.max(imageWdth, imageHeight) / minSize, 5.0f);
 
         Context context = imageView.getContext();
-        this.mDragScaleDetector = new DragScaleDetector(context, 50, 20, this);
-        this.mGestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
-            @Override
-            public void onLongPress(@NonNull MotionEvent e) {
-                ViewGestureAttacher.this.onLongPress();
-            }
-
-//            @Override
-//            public boolean onFling(@NonNull MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
-//                ViewGestureAttacher.this.onFling(e1.getX(), e1.getY(), -velocityX, -velocityY);
-//                return true;
-//            }
-
-            @Override
-            public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
-                return onSingleClick(e);
-            }
-
-            @Override
-            public boolean onDoubleTap(@NonNull MotionEvent e) {
-                return onDoubleClick(e);
-            }
-        });
+        this.mGestureDetector = new GestureDetector(context, this);
+        this.mGestureDetector.setDoubleClickEnable(true);
     }
 
     public void release() {
         mImageView.setOnClickListener(null);
         mImageView.removeOnLayoutChangeListener(this);
+    }
+
+    public void setDoubleClickEnable(boolean enable) {
+        mGestureDetector.setDoubleClickEnable(enable);
     }
 
     public void setGestureListener(IGestureListener listener) {
@@ -122,7 +102,7 @@ public class ViewGestureAttacher implements View.OnTouchListener,
     }
 
     public boolean isScaling() {
-        return mDragScaleDetector.isScaling();
+        return mGestureDetector.isScaling();
     }
 
     @Override
@@ -138,23 +118,12 @@ public class ViewGestureAttacher implements View.OnTouchListener,
     @Override
     public boolean onTouch(@NonNull View v, @NonNull MotionEvent ev) {
         mCurPointerCount = ev.getPointerCount();
-        int action = ev.getAction();
-        if (action == MotionEvent.ACTION_DOWN) {
-            onDetectStart();
-        }
-        // Try the Scale/Drag detector
-        boolean handled = mDragScaleDetector.onTouchEvent(ev);
-        if (mGestureDetector.onTouchEvent(ev)) {
-            handled = true;
-        }
-        if (action == MotionEvent.ACTION_UP
-                || action == MotionEvent.ACTION_CANCEL) {
-            onDetectEnd();
-        }
-        return handled;
+        mGestureDetector.onTouchEvent(v, ev);
+        return true;
     }
 
-    private void onDetectStart() {
+    @Override
+    public void onTouchBeg(@NonNull MotionEvent e) {
         ViewParent parent = mImageView.getParent();
         if (parent != null) {
             if (mInterceptHandler != null) {
@@ -163,11 +132,37 @@ public class ViewGestureAttacher implements View.OnTouchListener,
                 parent.requestDisallowInterceptTouchEvent(true);
             }
         }
-        cancelFling();
+        if (mGestureListener != null) {
+            mGestureListener.onTouchStart(this);
+        }
     }
 
     @Override
-    public void onDrag(float dx, float dy, float sumDx, float sumDy) {
+    public void onClick(float x, float y) {
+        if (mGestureListener != null) {
+            RectF rect = getDisplayRect();
+            boolean insideImage = rect.contains(x, y);
+            mGestureListener.onClick(this, x, y, insideImage);
+        }
+    }
+
+    @Override
+    public void onDoubleClick(float x, float y) {
+        if (mGestureListener != null &&
+                mGestureListener.onDoubleClick(this, x, y)) {
+            return;
+        }
+        float scale = getScale();
+        if (scale > mMinScale) {
+            scaleTo(mMinScale, x, y, true, true);
+        } else {
+            scaleTo(mDoubleScale, x, y, true, true);
+        }
+    }
+
+    @Override
+    public void onDrag(float x, float y, float dx, float dy,
+                       float sumDx, float sumDy, boolean singlePointer) {
         if (hasRunningAnimation()) {
             return; // 有动画执行时禁止拖动
         }
@@ -188,9 +183,9 @@ public class ViewGestureAttacher implements View.OnTouchListener,
         if (mOverDragHandler != null &&
                 mOverDragHandler.handDrag(this, dx, dy, sumDx, sumDy)) {
             if (mGestureListener != null) {
-                mGestureListener.onOverDragDown(this,
+                mGestureListener.onDragOverDown(this,
                         mOverDragHandler.getOverDragDistance(),
-                        mOverDragHandler.getOverDragPercent(), false);
+                        mOverDragHandler.getOverDragPercent());
             }
             return;
         }
@@ -200,47 +195,33 @@ public class ViewGestureAttacher implements View.OnTouchListener,
         if (!fixBoundary()) {
             notifyMatrixChanged();
         }
-
     }
 
     @Override
-    public void onDragEnd(float sumDx, float sumDy) {
-        if (mOverDragHandler != null) {
-            if (mOverDragHandler.isHandling() && mGestureListener != null) {
-                mGestureListener.onOverDragDown(this,
-                        mOverDragHandler.getOverDragDistance(),
-                        mOverDragHandler.getOverDragPercent(), true);
-            }
-            mOverDragHandler.exitHandle();
-        }
-        if (mGestureListener != null) {
-            mGestureListener.onDragEnd(this, sumDx, sumDy);
-        }
-    }
-
-    @Override
-    public void onFling(float startX, float startY, float velocityX, float velocityY) {
+    public boolean onDragEnd(float sumDx, float sumDy,
+                             int velocityX, int velocityY, boolean singlePointer) {
         if (mOverDragHandler != null && mOverDragHandler.isHandling()) {
-            return;
+            return true;
+        }
+        if (mGestureListener != null && mGestureListener.onDragEnd(this, sumDx, sumDy)) {
+            return true;
         }
 
-        if (hasRunningAnimation()) {
-            return; // 有动画执行时禁止拖动
-        }
-
-        if (mGestureListener != null &&
-                mGestureListener.onFling(this, startX, startY, velocityX, velocityY)) {
-            return;
-        }
-        FlingRunnable flingRunnable = new FlingRunnable(mImageView.getContext());
-        if (flingRunnable.fling(getViewWidth(), getViewHeight(), (int) velocityX, (int) velocityY)) {
-            mCurrentFlingRunnable = flingRunnable;
-            mImageView.post(flingRunnable);
-        }
+        return hasRunningAnimation();
     }
 
     @Override
-    public void onScale(float scaleFactor, float focusX, float focusY) {
+    public boolean onFling(float dx, float dy, boolean singlePointer) {
+        mSuppMatrix.postTranslate(dx, dy);
+
+        if (!fixBoundary()) {
+            notifyMatrixChanged();
+        }
+        return false;
+    }
+
+    @Override
+    public void onScale(float focusX, float focusY, float scaleFactor, boolean singlePointer) {
         if (mOverDragHandler != null && mOverDragHandler.isHandling()) {
             return;
         }
@@ -273,55 +254,34 @@ public class ViewGestureAttacher implements View.OnTouchListener,
     }
 
     @Override
-    public void onScaleEnd(float focusX, float focusY) {
-        if (mGestureListener != null) {
-            mGestureListener.onScaleEnd(this, focusX, focusY);
+    public void onScaleEnd(float cx, float cy, boolean singlePointer) {
+        if (mOverDragHandler != null && mOverDragHandler.isHandling()) {
+            return;
         }
-
-        fixScaleAnimated(focusX, focusY, true);
+        fixScaleAnimated(cx, cy, true);
     }
 
-    private void onLongPress() {
-        if (mGestureListener != null) {
-            mGestureListener.onLongClick(this);
+    @Override
+    public void onTouchEnd(@NonNull MotionEvent e) {
+        if (mOverDragHandler != null && mOverDragHandler.isHandling()) {
+            boolean handle = false;
+            if (mGestureListener != null) {
+                handle = mGestureListener.onDragOverDownEnd(this,
+                        mOverDragHandler.getOverDragDistance(),
+                        mOverDragHandler.getOverDragPercent());
+            }
+            mOverDragHandler.exitHandle();
+            if (handle) {
+                return;
+            }
         }
-    }
 
-    private boolean onSingleClick(@NonNull MotionEvent e) {
-        float x = e.getX(), y = e.getY();
-        if (mGestureListener != null) {
-            RectF rect = getDisplayRect();
-            boolean insideImage = rect.contains(x, y);
-            mGestureListener.onClick(this, x, y, insideImage);
-        }
-        return false;
-    }
-
-    /**
-     * @noinspection SameReturnValue
-     */
-    private boolean onDoubleClick(@NonNull MotionEvent ev) {
-        float x = ev.getX();
-        float y = ev.getY();
-        if (mGestureListener != null &&
-                mGestureListener.onDoubleClick(this, x, y)) {
-            return true;
-        }
-        float scale = getScale();
-        if (scale > mMinScale) {
-            scaleTo(mMinScale, x, y, true, true);
-        } else {
-            scaleTo(mDoubleScale, x, y, true, true);
-        }
-        return true;
-    }
-
-    private void onDetectEnd() {
         if (mInterceptHandler != null) {
             mInterceptHandler.onTouchEnd();
         }
 
-        if (mGestureListener != null && mGestureListener.onDetectEnd(this)) {
+        if (mGestureListener != null &&
+                mGestureListener.onDetectEnd(this)) {
             return;
         }
 
@@ -810,78 +770,5 @@ public class ViewGestureAttacher implements View.OnTouchListener,
     public int dp2px(float dp) {
         float density = mImageView.getResources().getConfiguration().densityDpi / 160.0f;
         return (int) (dp * (density < 0.1f ? 3 : density) + 0.5f);
-    }
-
-    private void cancelFling() {
-        if (mCurrentFlingRunnable != null) {
-            mCurrentFlingRunnable.cancelFling();
-            mCurrentFlingRunnable = null;
-        }
-    }
-
-    private class FlingRunnable implements Runnable {
-        private final Scroller mScroller;
-        private int mCurrentX, mCurrentY;
-
-        public FlingRunnable(Context context) {
-            mScroller = new Scroller(context);
-        }
-
-        public void cancelFling() {
-            mScroller.forceFinished(true);
-        }
-
-        public boolean fling(int viewWidth, int viewHeight, int velocityX, int velocityY) {
-//            UILog.e("fling: " + velocityX + ", " + velocityY);
-            final RectF rect = getDisplayRect();
-            final int startX = Math.round(-rect.left);
-            int mMinX, mMaxX, mMinY, mMaxY;
-            if (viewWidth < rect.width()) {
-                mMinX = 0;
-                mMaxX = Math.round(rect.width() - viewWidth);
-            } else {
-                mMinX = mMaxX = startX;
-            }
-            final int startY = Math.round(-rect.top);
-            if (viewHeight < rect.height()) {
-                mMinY = 0;
-                mMaxY = Math.round(rect.height() - viewHeight);
-            } else {
-                mMinY = mMaxY = startY;
-            }
-            mCurrentX = startX;
-            mCurrentY = startY;
-            // If we actually can move, fling the scroller
-            if (startX != mMaxX || startY != mMaxY) {
-//                UILog.i("fling: " + startX + ", " + startY + ", " + velocityX + ", " + velocityY);
-                mScroller.fling(startX, startY, velocityX, velocityY, mMinX, mMaxX, mMinY, mMaxY);
-                return true;
-            }
-            return false;
-        }
-
-        @Override
-        public void run() {
-            if (mScroller.isFinished()) {
-                return; // remaining post that should not be handled
-            }
-            if (mScroller.computeScrollOffset()) {
-                int newX = mScroller.getCurrX();
-                int newY = mScroller.getCurrY();
-
-                float dx = mCurrentX - newX;
-                float dy = mCurrentY - newY;
-//                if (dx == 0 && dy == 0) {
-//                    mScroller.forceFinished(true);
-//                    return;
-//                }
-                mSuppMatrix.postTranslate(dx, dy);
-                notifyMatrixChanged();
-                mCurrentX = newX;
-                mCurrentY = newY;
-                // Post On animation
-                mImageView.postOnAnimation(this);
-            }
-        }
     }
 }

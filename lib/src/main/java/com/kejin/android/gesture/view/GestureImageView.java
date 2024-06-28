@@ -1,4 +1,4 @@
-package com.kejin.view.gesture;
+package com.kejin.android.gesture.view;
 
 import android.content.Context;
 import android.graphics.Canvas;

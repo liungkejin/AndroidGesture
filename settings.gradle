@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ViewGestureAttacher"
+rootProject.name = "AndroidGesture"
 include ':app'
 include ':lib'
