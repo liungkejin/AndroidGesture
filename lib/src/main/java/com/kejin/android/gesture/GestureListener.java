@@ -2,12 +2,14 @@ package com.kejin.android.gesture;
 
 import android.view.MotionEvent;
 
+import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 
 public interface GestureListener {
     /**
-     * 所有触摸事件
+     * 每个触摸事件开始处理之前的回调
      */
+    @CallSuper
     default void onTouchEventBefore(@NonNull MotionEvent e) {
         int action = e.getActionMasked();
         if (action == MotionEvent.ACTION_DOWN) {
@@ -15,6 +17,11 @@ public interface GestureListener {
         }
     }
 
+    /**
+     * 每个触摸事件处理结束之后的回调
+     * 这个回调在 onTouchEnd() 之前
+     */
+    @CallSuper
     default void onTouchEventAfter(@NonNull MotionEvent e) {
         int action = e.getActionMasked();
         if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
@@ -49,6 +56,15 @@ public interface GestureListener {
     default void onSlide(boolean left, boolean up, boolean right, boolean down) {}
 
     /**
+     * 开始拖动
+     * @param x0 当前Pointer0的触摸坐标x
+     * @param y0 当前Pointer0的触摸坐标y
+     * @param x1 当前Pointer1的触摸坐标x，如果是 singlePointer, 则等于 x0
+     * @param y1 当前Pointer1的触摸坐标y，如果是 singlePointer, 则等于 y0
+     */
+    default void onDragStart(float x0, float y0, float x1, float y1, boolean singlePointer) {}
+
+    /**
      * 拖动
      * @param x, y 当前 x,y
      * @param dx 拖动的变化值
@@ -79,7 +95,17 @@ public interface GestureListener {
         return false;
     }
 
+    /**
+     * fling动画结束的回调
+     * @param singlePointer 是否为单指
+     */
     default void onFlingEnd(boolean singlePointer) {}
+
+    /**
+     * 缩放开始
+     * @param singlePointer 是否为单指
+     */
+    default void onScaleStart(boolean singlePointer) {}
 
     /**
      * 缩放
@@ -90,7 +116,16 @@ public interface GestureListener {
      */
     default void onScale(float cx, float cy, float deltaScale, boolean singlePointer) {}
 
+    /**
+     * 缩放结束
+     */
     default void onScaleEnd(float cx, float cy, boolean singlePointer) {}
+
+    /**
+     * 开始旋转
+     * @param singlePointer 是否为单指
+     */
+    default void onRotateStart(boolean singlePointer) {}
 
     /**
      * 旋转
@@ -100,6 +135,11 @@ public interface GestureListener {
      * @param singlePointer 是否为单指操作
      */
     default void onRotate(float cx, float cy, float deltaDegrees, boolean singlePointer) {}
+
+    /**
+     * 旋转结束
+     */
+    default void onRotateEnd(boolean singlePointer) {}
 
     /**
      * 所有触摸都结束

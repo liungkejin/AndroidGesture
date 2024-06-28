@@ -121,6 +121,11 @@ public class GestureDetector {
         singlePointerScaleRotateEnable = false;
     }
 
+    /**
+     * 开启单指操作模式，设置一个锚点
+     * @param cx 锚点x
+     * @param cy 锚点y
+     */
     public void enableSinglePointerScaleRotate(float cx, float cy) {
         singlePointerScaleRotateEnable = true;
         this.singlePointerScaleRotateCenterX = cx;
@@ -150,6 +155,9 @@ public class GestureDetector {
         listener.onTouchEventBefore(event);
 //        ILOG.utilsInfo("GestureDetector event: " + event);
         int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            listener.onTouchBeg(event);
+        }
         switch (action) {
             case MotionEvent.ACTION_POINTER_DOWN:
                 if (flingRunnable != null) {
@@ -260,9 +268,12 @@ public class GestureDetector {
                 if (startDragFlag || singlePointerDragStartFlag) {
                     onDragEnd(singlePointerDragStartFlag);
                 }
+                boolean singlePointer = curTouchPointer != TouchPointer.MULTI_POINTER;
                 if (startScaleFlag) {
-                    boolean singlePointer = curTouchPointer != TouchPointer.MULTI_POINTER;
                     listener.onScaleEnd(lastScaleCenterX, lastScaleCenterY, singlePointer);
+                }
+                if (startRotateFlag) {
+                    listener.onRotateEnd(singlePointer);
                 }
 
                 isTouchMoving = false;
@@ -357,6 +368,7 @@ public class GestureDetector {
                     if (!singlePointerDragStartFlag && Math.sqrt(dx * dx + dy * dy) > dragThreshold) {
                         singlePointerDragStartFlag = true;
                         singleLastDragPoint.set(x, y);
+                        listener.onDragStart(x, y, x, y, true);
                     }
                     break;
 
@@ -433,6 +445,7 @@ public class GestureDetector {
                 listener.onScale(lastScaleCenterX, lastScaleCenterY, scale, true);
             } else if (Math.abs(1 - distance / lastDistance) > scaleThreshold) {
                 startScaleFlag = true;
+                listener.onScaleStart(true);
             }
 
             //////////// rotate
@@ -443,6 +456,7 @@ public class GestureDetector {
                 listener.onRotate((x0 + x1) / 2f, (y0 + y1) / 2f, degrees, true);
             } else if (Math.abs(degrees) > rotateThreshold) {
                 startRotateFlag = true;
+                listener.onRotateStart(true);
             }
 
         } else {
@@ -489,6 +503,7 @@ public class GestureDetector {
                 onDragging((x0+x1)/2, (y0+y1)/2, dx, dy, false);
             } else if (PointF.length(dx0, dy0) > dragThreshold && PointF.length(dx1, dy1) > dragThreshold) {
                 startDragFlag = true;
+                listener.onDragStart(x0, y0, x1, y1, false);
             }
 
             ///////////// scale
@@ -507,6 +522,7 @@ public class GestureDetector {
                 listener.onScale(lastScaleCenterX, lastScaleCenterY, scale, false);
             } else if (Math.abs(1 - distance / lastDistance) > scaleThreshold) {
                 startScaleFlag = true;
+                listener.onScaleStart(false);
             }
 
             //////////// rotate
@@ -517,6 +533,7 @@ public class GestureDetector {
                 listener.onRotate((x0 + x1) / 2f, (y0 + y1) / 2f, degrees, false);
             } else if (Math.abs(degrees) > rotateThreshold) {
                 startRotateFlag = true;
+                listener.onRotateStart(false);
             }
 
         } else {
